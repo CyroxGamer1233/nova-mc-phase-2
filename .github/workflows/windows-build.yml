@@ -1,0 +1,55 @@
+name: Build NovaMC for Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "master"]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10"
+
+      - name: Build JARs
+        run: gradle clean build
+
+      - name: Package NovaMC Launcher EXE
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build/package | Out-Null
+          jpackage `
+            --type exe `
+            --name NovaMC-Launcher `
+            --input launcher/build/libs `
+            --main-jar launcher-${{ env.NOVA_VERSION }}.jar `
+            --main-class com.novamc.launcher.LauncherMain `
+            --dest build/package `
+            --app-version 0.1.0 `
+            --vendor NovaMC `
+            --win-shortcut `
+            --win-menu
+        env:
+          NOVA_VERSION: "0.2.0-phase2"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaMC-Windows
+          path: |
+            build/package/*.exe
+            launcher/build/libs/*.jar
+            client/build/libs/*.jar
